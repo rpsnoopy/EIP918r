@@ -28,14 +28,10 @@ It can be here mentioned that token distribution via POW is considered very inte
 
 
 ## Specification
-
 ### Mandatory methods
-
-
 **NOTES**:
  - The following specifications use syntax from Solidity compiler version `0.4.25`
  - Callers MUST handle `false` from any `returns (bool success)`.  Callers MUST NOT assume that `false` is never returned!
-
 
 #### challengeNumber
 Returns the current `challengeNumber`, i.e. a byte32 number to be included (with other elements, see later) in the POW algorithm input in order to synthesize a valid solution. It is expected that a new `challengeNumber` is generated after that the valid solution has been found and the reward tokens have been assigned.
