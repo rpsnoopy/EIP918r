@@ -44,7 +44,7 @@ interface ERC918Interface {
  - The following specifications use syntax from Solidity compiler version `0.4.25`
  - Callers MUST handle `false` from any `returns (bool success)`.  Callers MUST NOT assume that `false` is never returned!
 
-#### challengeNumber
+#### `challengeNumber`
 Returns the current `challengeNumber`, i.e. a byte32 number to be included (with other elements, see later) in the POW algorithm input in order to synthesize a valid solution. It is expected that a new `challengeNumber` is generated after that the valid solution has been found and the reward tokens have been assigned.
 
 ```solidity
@@ -54,7 +54,7 @@ function challengeNumber() external public returns (bytes32)
 **NOTES**: in a common implementation `challengeNumber` is calculated starting from some immutable data, like elements derived from some past ethereum blocks.
 
 
-#### miningTarget
+#### `miningTarget`
 Returns the `miningTarget`, i.e. a number which is a threshold useful to evaluate if a given submitted POW solution is valid.
 
 ```solidity
@@ -63,7 +63,7 @@ function miningTarget () external public returns (uint)
 
 **NOTES**: in a common implementation, the solution is accepted if lower than the `miningTarget`.
 
-#### miningReward
+#### `miningReward`
 Returns the number of tokens that POW faucet shall dispense as next reward.
 
 ```solidity
@@ -72,21 +72,21 @@ function miningReward() view external returns (uint)
 
 **NOTES**: in a common implementation, the reward progressively diminishes toward zero trough the epochs (“epoch” is the mining cycle started by the generation of a new `challengeNumber` and ended by the `reward` assignment), in order to have a maximum number of tokens dispensed in the whole life of the token smart contract, i.e. after that the maximum number of tokens has been dispensed, no more tokens will be dispensed.
 
-#### epochCount
+#### `epochCount`
 Returns the current epoch, i.e. the number of successful minting operation so far (starting from zero).
 
 ```solidity
 function epochCount() external public returns (uint)
 ```
 
-#### tokensMinted
+#### `tokensMinted`
 Returns the total number of tokens dispensed so far by POW contract
 
 ```solidity
 function tokensMinted() external public returns (uint)
 ```
 
-#### difficulty
+#### `difficulty`
 Returns the current difficulty, i.e. a number useful to estimate (by means of some known algorithm) the mean time required to find a valid POW solution. It is expected that the `difficulty` varies if the smart contract controls the mean time between valid solutions by means of some control loop.
 
 ```solidity
@@ -95,7 +95,7 @@ function difficulty() external public returns (uint)
 
 **NOTES**: in a common implementation, difficulty varies when computational power is added/subtracted to the network, in order to maintain stable the mean time between valid solutions found.
 
-#### blocksPerReadjustment
+#### `blocksPerReadjustment`
 Returns the number of token block rewards between difficulty readjustment.
 
 ```solidity
@@ -104,9 +104,7 @@ function blocksPerReadjustment() external returns (uint);
 **NOTES**: in a common implementation, while `difficulty` varies when computational power is added/subtracted to the network, the `blocksPerReadjustment` is fixed at deploy time.
 
 
-
-
-#### mint
+#### `mint`
 Returns a flag indicating that the submitted solution has been considered the valid solution for the current epoch and rewarded, and that all the activities needed in order to launch the new epoch have been successfully completed.
 
 ```solidity
@@ -115,7 +113,7 @@ function mint(uint nonce) external returns (bool success)
 
 **NOTES**:
 
-1) In particular, the method `mint()` verifies a submitted solution (`hash check`), described by the `nonce` (see later):
+1) In particular, the method `mint()` verifies a submitted solution (`solution validity check`), described by the `nonce` (see later):
 
 * `IF (the solution found is valid and it is the first valid solution submitted for the current epoch)`:
 a) rewards the solution submitted sending No. `miningReward` tokens to `msg.sender`;
@@ -125,10 +123,10 @@ d) eventually adjusts the POW difficulty;
 e) returns true.
 * `ELSE returns false` (or, in very common implementation, **reverts**).
 
-2) The first phase (`hash check`) **MUST BE** implemented using the below specified public function `hash()`;
-3) It is below defined a recommended (i.e. not mandatory) internal structure for the `mint()`, which should be adopted if there are not contrary reasons.
+2) The first phase (`solution validity check`) **MUST BE** implemented using in the code the below specified public function `hash()`;
+3) It is below defined a recommended (i.e. not mandatory) internal structure for the `mint()`, which should be adopted if there are not contrary reasons (see below: `mint() recommended internal architecture)`
 
-#### hash (Optional)
+#### `hash`
 Returns the digest calculated by the algorithm of hashing used in the particular implementation, whatever it be.
 
 ```solidity
@@ -139,7 +137,7 @@ function hash(uint nonce, address minter, bytes32 challengeNumber) public return
 
 
 ### Events
-#### Mint
+#### `Mint`
 The `Mint` event indicates the rewarded address, the reward amount, the epoch count and the `challengeNumber` used in order to find the solution.
 
 ```solidity
@@ -148,7 +146,7 @@ event Mint(address indexed _to, uint _reward, uint _epochCount, bytes32 _challen
 
 **NOTES**: TO BE MANDATORY EMITTED immediately after that the submitted solution is rewarded.
 
-## Recommendation
+## RECOMMENDATION
 
 ### MITM attacks
 To prevent man-in-the-middle attacks, the `msg.sender` address, which is the address eventually rewarded, can be part of the hash so that any `nonce` solution found is valid only for that particular Ethereum account and it is not susceptible to be used by other. To enforce trust between pools and miners, there is a recommended delegated mining scheme that can additionally be used, that allows miners to safely submit signed solutions to pools who submit on behalf of the original miners. ( See 'Delegated Minting Extension' )
@@ -165,21 +163,21 @@ The recommended representation of the solution found is by a `nonce`, i.e. a num
 ### Bitcoin like POW models
 In the case that a POW model similar to that of bitcoin is adopted (i.e. evaluation of solution validity based on being lower or equal of a given threshold and cited threshold moved between a maximum and a minimum) it is **STRONGLY RECCOMENDED** that both the upper limit and the lower limit of the threshold swing, be accessible from the interface. Two additional methods should be implemented:
 
-**MIN_TARGET**
+**`MIN_TARGET`**
 Returns the minimum possible target that the mineable contract will provide as part of the proof of work algorithm.
 
 ```solidity
 function MIN_TARGET() external public returns (uint256)
 ```
 
-**MAX_TARGET**
+**`MAX_TARGET`**
 Returns the maximum possible target that the mineable contract will provide as part of the proof of work algorithm.
 
 ```solidity
 function MAX_TARGET() external public returns (uint256)
 ```
 
-### mint() recommended internal structure
+### mint() recommended internal architecture
 From the miner's point of view, submitting a solution for possible reward means calling the `mint()` function with the `nonce` argument and waiting for the result evaluation.
 It is recommended that, internally, the `mint()` function be realized invoking 4 separate successive phases: solution validity check, rewarding, epoch increment, difficulty adjustment.
 The use in the first phase (solution validity check) of the above specified hash() function is **MANDATORY** (in order to assure full consistency between SW developed for mining and the solution validity check).
@@ -197,18 +195,16 @@ In a sample compliant realization, the `mint` can be then **roughly** described 
 ```solidity
 function mint(uint256 nonce) public returns (bool success)
 {
-    _hashCheck(_hash(nonce, msg.sender, challengeNumber));
+    _hashCheck(hash(nonce, msg.sender, challengeNumber));
     _reward();
-
     emit Mint(minter, _reward(), epochCount, challengeNumber);
-
     _epoch();
     _adjustDifficulty();
     return true;
 }
 ```
 
-### Example mining function
+### Example of mining function
 A general mining function written in python for finding a valid nonce for keccak256 mined token, is as follows:
 ``` python
 def generate_nonce():
